@@ -74,73 +74,18 @@ with tab1:
                     preprocessor=saved_preprocessor
                 )
                 
-                # 💡 [핵심 보정 치트키] 
-                # 전처리 거치면서 혹시나 컬럼명이 날아가고 어레이로 변했다면, 
-                # 캣부스트 모델이 원래 원하던 뇌세포 컬럼명 리스트(feature_names_)를 강제로 다시 주입해 버립니다.
+                # 4. 강제 컬럼 이름 복구 치트키
                 if not isinstance(processed_df, pd.DataFrame):
                     processed_df = pd.DataFrame(processed_df)
-                
-                # 모델이 기억하는 원래 컬럼 이름을 강제로 덮어씌우기
                 processed_df.columns = model.feature_names_
                 
-                # 4. 캣부스트 마스터 모델 추론 및 신뢰구간 계산
+                # 5. 캣부스트 마스터 모델 추론 및 신뢰구간 계산
                 predicted_target = float(model.predict(processed_df)[0])
                 MAE_VALUE = mae_value 
                 
                 lower_bound = predicted_target - MAE_VALUE
                 upper_bound = predicted_target + MAE_VALUE
                 
-                # 5. 밸런스 갭(Gap) 연산
+                # 6. 밸런스 갭(Gap) 연산
                 balance_gap = None
-                gap_text = "현재 타겟 종목의 실제 기록을 입력하지 않아 밸런스 갭 분석은 생략됩니다."
-                
-                if target_actual > 0:
-                    balance_gap = predicted_target - target_actual
-                    gap_status = "부족한 약점" if balance_gap > 0 else "초과 달성한 강점"
-                    gap_text = f"표준 비율 대비 현재 약 {abs(balance_gap):.1f} kg [{gap_status}] 상태입니다."
-
-                if balance_gap is not None:
-                    if balance_gap > 0:
-                        advice_comment = f"현재 {target_type} 성능이 정석 비율보다 밀리고 있습니다. 약점 보완 루틴 돌리세요."
-                    else:
-                        advice_comment = f"이미 {target_type} 성능은 체급 대비 차고 넘칩니다. {known_type}에 더 집중하셔도 좋습니다."
-                else:
-                    advice_comment = "타겟 종목 기록을 적어주시면 더 정밀한 코칭 멘트가 나갑니다."
-
-                custom_message = (
-                    f"--------------------------------------------------\n"
-                    f"🏋️‍♂️ AI 기반 SBD 스트렝스 밸런스 진단 리포트\n"
-                    f"--------------------------------------------------\n"
-                    f" 체급 대비 정석적인 신체 역학 비율을 스캔한 결과입니다.\n\n"
-                    f"[*] 현재 스펙 : {sex} / {age:.0f}세 / {weight:.1f}kg / {equipment}\n"
-                    f"[*] 기준 기록 : {known_type} -> {known_1rm:.1f} kg\n"
-                    f"[*] AI 진단  : 이 정도 {known_type} 수행 능력이면, \n"
-                    f"                {target_type}은 [{predicted_target:.1f} kg]을 치는 게 통계적 황금 밸런스입니다.\n"
-                    f"[*] 밸런스 갭 : {gap_text}\n"
-                    f"--------------------------------------------------\n"
-                    f"📢 총평: {advice_comment}\n"
-                    f"--------------------------------------------------\n\n"
-                    f"💡 실전 바벨 세팅 가이드라인:\n"
-                    f" - 오늘 컨디션이 평범하다면 밸런스 목표 중량인 [{predicted_target:.1f}kg]을 잡으세요.\n"
-                    f" - 몸이 유난히 가벼운 날(Top Single)에는 최대 [{upper_bound:.1f}kg]까지 증량을 선언해 보십시오.\n"
-                    f" - 컨디션이 엉망이고 묵직하다면 안전하게 하한선인 [{lower_bound:.1f}kg]으로 볼륨만 채우고 하차하십시오."
-                )
-                
-                st.write("---")
-                c1, c2, c3 = st.columns(3)
-                c1.metric(label="AI 권장 중량", value=f"{predicted_target:.1f} kg")
-                c2.metric(label="당일 컨디션 최상 (상한선)", value=f"{upper_bound:.1f} kg")
-                
-                if balance_gap is not None:
-                    delta_val = -balance_gap
-                    c3.metric(label="표준 대비 갭 (Gap)", value=f"{balance_gap:.1f} kg", delta=f"{delta_val:.1f} kg")
-                    
-                st.write("")
-                st.text(custom_message)
-                
-            except Exception as e:
-                st.error(f"연산 중 에러가 발생했습니다: {e}")
-
-with tab2:
-    st.subheader("🔮 만약에... 내가 몸무게를 더 늘리거나 줄인다면?")
-    st.info("사이드바의 체중(kg)과 나이를 조작한 뒤 다시 [스캔 시작]을 눌러보세요. 바뀐 스펙에 맞춰 AI가 미래의 잠재 중량을 실
+                gap_text = "현재 타
