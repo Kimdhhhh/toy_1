@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import datetime
+
+# 🔥 중요: 형님이 올리신 setup.py의 함수들을 '정석대로' 가져옵니다.
 from setup import apply_preprocessing, strategy_map
 
 # 페이지 기본 세팅
@@ -10,10 +11,11 @@ st.set_page_config(page_title="SBD AI Balance", page_icon="🏋️‍♂️", la
 st.title("🏋️‍♂️ SBD AI 스트렝스 밸런스 진단")
 st.caption("108만 명의 빅데이터가 분석하는 나의 숨겨진 스트렝스 포텐셜")
 
-# 💡 [백엔드 통합] 외부 FastAPI 주소를 찌르지 않고, 클라우드 메모리에 모델을 다이렉트로 로드합니다.
+# 아티팩트 보따리 로드
 @st.cache_resource
 def load_ai_model():
     try:
+        # 경로 다 필요 없고 깃허브 최상위에 같이 있으니 파일명만 적으면 됩니다.
         artifact = joblib.load('SBD_v2.pkl')
         return artifact
     except Exception as e:
@@ -52,7 +54,7 @@ with tab1:
             saved_preprocessor = artifact['preprocessor']
             mae_value = artifact['mae']
             
-            # 입력 데이터 스냅샷 딕셔너리 생성
+            # 1. 입력 데이터 딕셔너리 생성 (형님 주피터 원본 양식 그대로)
             input_dict = {
                 "Sex": sex, "Age": age, "BodyweightKg": weight, "Equipment": equipment,
                 "Known_Type": known_type, "Known_1RM": known_1rm, "Target_Type": target_type,
@@ -60,12 +62,13 @@ with tab1:
             }
             
             try:
-                # [A] 판다스 변환 및 상류 파생변수 실시간 생성
+                # 2. 판다스 데이터프레임 변환 및 상류 파생변수 생성
                 input_df = pd.DataFrame([input_dict])
                 input_df['Age_From_Peak'] = abs(input_df['Age'] - 32.0)
                 input_df['Input_Rel_Strength'] = input_df['Known_1RM'] / input_df['BodyweightKg']
                 
-                # [B] 하류 전처리 마스터 엔진 통과
+                # 💡 [핵심 보정] 형님이 만든 setup.py의 순정 전처리 엔진에 데이터를 통과시킵니다.
+                # 이렇게 해야 'pipe_S5__Age' 같은 완벽한 컬럼 세트가 생성되어 캣부스트가 알아먹습니다.
                 processed_df, _ = apply_preprocessing(
                     X_input=input_df,
                     strategy_map=strategy_map,
@@ -73,14 +76,14 @@ with tab1:
                     preprocessor=saved_preprocessor
                 )
                 
-                # [C] 캣부스트 마스터 모델 추론 및 신뢰구간 순차 계산
+                # 3. 캣부스트 마스터 모델 추론 및 신뢰구간 계산
                 predicted_target = float(model.predict(processed_df)[0])
                 MAE_VALUE = mae_value 
                 
                 lower_bound = predicted_target - MAE_VALUE
                 upper_bound = predicted_target + MAE_VALUE
                 
-                # [D] 유저의 실제 기록이 입력되었다면 밸런스 갭(Gap) 연산
+                # 4. 밸런스 갭(Gap) 연산
                 balance_gap = None
                 gap_text = "현재 타겟 종목의 실제 기록을 입력하지 않아 밸런스 갭 분석은 생략됩니다."
                 
@@ -89,7 +92,7 @@ with tab1:
                     gap_status = "부족한 약점" if balance_gap > 0 else "초과 달성한 강점"
                     gap_text = f"표준 비율 대비 현재 약 {abs(balance_gap):.1f} kg [{gap_status}] 상태입니다."
 
-                # [E] 고도화 팩폭 멘트 튜닝
+                # 5. 고도화 팩폭 멘트 튜닝
                 if balance_gap is not None:
                     if balance_gap > 0:
                         advice_comment = f"현재 {target_type} 성능이 정석 비율보다 밀리고 있습니다. 약점 보완 루틴 돌리세요."
@@ -118,7 +121,6 @@ with tab1:
                 )
                 
                 st.write("---")
-                # 결과 출력 대시보드 메트릭 카드
                 c1, c2, c3 = st.columns(3)
                 c1.metric(label="AI 권장 중량", value=f"{predicted_target:.1f} kg")
                 c2.metric(label="당일 컨디션 최상 (상한선)", value=f"{upper_bound:.1f} kg")
